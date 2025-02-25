@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+torch
+numpy
+pillow
+opencv-python
+logging
