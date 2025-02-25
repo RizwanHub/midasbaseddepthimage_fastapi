@@ -26,31 +26,31 @@ app.add_middleware(
 # Directory configuration
 UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "outputs"
-MODEL_DIR = "models"  # Store the model locally
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
-os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Hardware configuration
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {DEVICE}")
 
-# Model Path
-MODEL_PATH = os.path.join(MODEL_DIR, "dpt_large-midas-2f21e586.pt")
+# Model Path (since .pt file is uploaded without models/ folder)
+MODEL_PATH = os.path.abspath("dpt_large-midas-2f21e586.pt")
 
 # Global variables for lazy loading
 model = None
 midas_transforms = None
 
 def load_midas_model():
-    """Load MiDaS model from the local models/ directory instead of downloading."""
+    """Load MiDaS model from the root directory."""
     try:
         global model, midas_transforms
         if model is None or midas_transforms is None:
             if not os.path.exists(MODEL_PATH):
-                raise FileNotFoundError(f"Model file not found: {MODEL_PATH}. Please download it manually.")
+                raise FileNotFoundError(f"Model file not found: {MODEL_PATH}. Please ensure it is in the project root.")
 
-            logger.info("Loading MiDaS model from local storage...")
+            logger.info(f"Loading MiDaS model from {MODEL_PATH}...")
+
+            # Load MiDaS model
             model = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
             model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
             model.to(DEVICE).eval()
@@ -62,7 +62,7 @@ def load_midas_model():
         return model, midas_transforms
     except Exception as e:
         logger.error(f"Failed to load MiDaS model: {str(e)}", exc_info=True)
-        raise RuntimeError("MiDaS model loading failed. Ensure the model file exists in 'models/'.")
+        raise RuntimeError("MiDaS model loading failed. Ensure the .pt file is in the root directory.")
 
 @app.post("/generate-depth-map")
 async def generate_depth_map(file: UploadFile = File(...)):
