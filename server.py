@@ -26,34 +26,43 @@ app.add_middleware(
 # Directory configuration
 UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "outputs"
+MODEL_DIR = "models"  # Store the model locally
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+os.makedirs(MODEL_DIR, exist_ok=True)
 
 # Hardware configuration
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {DEVICE}")
+
+# Model Path
+MODEL_PATH = os.path.join(MODEL_DIR, "dpt_large-midas-2f21e586.pt")
 
 # Global variables for lazy loading
 model = None
 midas_transforms = None
 
 def load_midas_model():
-    """Load MiDaS model from the official repository when needed."""
+    """Load MiDaS model from the local models/ directory instead of downloading."""
     try:
         global model, midas_transforms
         if model is None or midas_transforms is None:
-            logger.info("Loading MiDaS model from the server...")
+            if not os.path.exists(MODEL_PATH):
+                raise FileNotFoundError(f"Model file not found: {MODEL_PATH}. Please download it manually.")
+
+            logger.info("Loading MiDaS model from local storage...")
             model = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
+            model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
             model.to(DEVICE).eval()
 
-            logger.info("Loading MiDaS transforms from the server...")
+            logger.info("Loading MiDaS transforms...")
             midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms").dpt_transform
 
-            logger.info("MiDaS model and transforms loaded successfully.")
+            logger.info("✅ MiDaS model and transforms loaded successfully.")
         return model, midas_transforms
     except Exception as e:
         logger.error(f"Failed to load MiDaS model: {str(e)}", exc_info=True)
-        raise RuntimeError("MiDaS model loading failed. Check internet connection and repository availability.")
+        raise RuntimeError("MiDaS model loading failed. Ensure the model file exists in 'models/'.")
 
 @app.post("/generate-depth-map")
 async def generate_depth_map(file: UploadFile = File(...)):
