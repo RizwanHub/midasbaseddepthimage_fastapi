@@ -5,6 +5,7 @@ import os
 import cv2
 import numpy as np
 import torch
+import torchvision.transforms as transforms
 from PIL import Image
 import logging
 
@@ -42,9 +43,26 @@ model = None
 midas_transforms = None
 
 def load_midas_model():
-    model_path = "models/dpt_large-midas.pt"
-    model = torch.hub.load("intel-isl/MiDaS", "DPT_Large", source="local", model_path=model_path)
-    midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
+    global model, midas_transforms
+
+    if model is None:
+        # Load the model from the local .pt file
+        if not os.path.exists(MODEL_PATH):
+            raise FileNotFoundError(f"Model file not found at {MODEL_PATH}. Please ensure the model is downloaded.")
+        
+        model = torch.load(MODEL_PATH, map_location=DEVICE)
+        model.eval()
+
+        # Define the transforms manually
+        midas_transforms = transforms.Compose([
+            transforms.Resize((384, 384)),  # Resize to the input size expected by MiDaS
+            transforms.ToTensor(),           # Convert to tensor
+            transforms.Normalize(            # Normalize with mean and std
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
+        ])
+
     return model, midas_transforms
 
 @app.post("/generate-depth-map")
@@ -66,7 +84,7 @@ async def generate_depth_map(file: UploadFile = File(...)):
         img_np = np.array(img)
 
         # Apply MiDaS transforms
-        input_tensor = midas_transforms(img_np).to(DEVICE)
+        input_tensor = midas_transforms(img).unsqueeze(0).to(DEVICE)
 
         # Generate depth prediction
         with torch.no_grad():
