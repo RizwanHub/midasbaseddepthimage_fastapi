@@ -1,0 +1,6 @@
+services:
+  - type: web
+    name: midasbaseddepthmap-fastapi
+    env: python
+    plan: free
+    timeout: 300  # Increase timeout to 300 seconds (5 minutes)
