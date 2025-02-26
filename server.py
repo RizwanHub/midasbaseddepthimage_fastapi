@@ -8,6 +8,7 @@ import torch
 import torchvision.transforms as transforms
 from PIL import Image
 import logging
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -46,22 +47,30 @@ def load_midas_model():
     global model, midas_transforms
 
     if model is None:
-        # Load the model from the local .pt file
-        if not os.path.exists(MODEL_PATH):
-            raise FileNotFoundError(f"Model file not found at {MODEL_PATH}. Please ensure the model is downloaded.")
-        
-        model = torch.load(MODEL_PATH, map_location=DEVICE)
-        model.eval()
+        try:
+            # Verify the model file exists
+            if not os.path.exists(MODEL_PATH):
+                raise FileNotFoundError(f"Model file not found at {MODEL_PATH}. Please ensure the model is downloaded.")
 
-        # Define the transforms manually
-        midas_transforms = transforms.Compose([
-            transforms.Resize((384, 384)),  # Resize to the input size expected by MiDaS
-            transforms.ToTensor(),           # Convert to tensor
-            transforms.Normalize(            # Normalize with mean and std
-                mean=[0.485, 0.456, 0.406],
-                std=[0.229, 0.224, 0.225]
-            )
-        ])
+            # Load the model
+            logger.info("Loading MiDaS model...")
+            start_time = time.time()
+            model = torch.jit.load(MODEL_PATH, map_location=DEVICE)  # Use torch.jit.load for TorchScript models
+            model.eval()
+            logger.info(f"MiDaS model loaded successfully in {time.time() - start_time:.2f} seconds.")
+
+            # Define the transforms manually
+            midas_transforms = transforms.Compose([
+                transforms.Resize((384, 384)),  # Resize to the input size expected by MiDaS
+                transforms.ToTensor(),           # Convert to tensor
+                transforms.Normalize(            # Normalize with mean and std
+                    mean=[0.485, 0.456, 0.406],
+                    std=[0.229, 0.224, 0.225]
+                )
+            ])
+        except Exception as e:
+            logger.error(f"Failed to load MiDaS model: {str(e)}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to load MiDaS model: {str(e)}")
 
     return model, midas_transforms
 
@@ -81,12 +90,17 @@ async def generate_depth_map(file: UploadFile = File(...)):
 
         # Open image and convert to RGB
         img = Image.open(upload_path).convert("RGB")
-        img_np = np.array(img)
+
+        # Resize the image to reduce processing time
+        max_size = 1024  # Maximum dimension (width or height)
+        img.thumbnail((max_size, max_size))
 
         # Apply MiDaS transforms
         input_tensor = midas_transforms(img).unsqueeze(0).to(DEVICE)
 
         # Generate depth prediction
+        logger.info("Generating depth map...")
+        start_time = time.time()
         with torch.no_grad():
             prediction = model(input_tensor)
             prediction = torch.nn.functional.interpolate(
@@ -117,6 +131,7 @@ async def generate_depth_map(file: UploadFile = File(...)):
         # Clean up uploaded file
         os.remove(upload_path)
 
+        logger.info(f"Depth map generated successfully in {time.time() - start_time:.2f} seconds.")
         return FileResponse(depth_path, media_type="image/png", filename=depth_filename)
 
     except Exception as e:
