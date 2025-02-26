@@ -7,7 +7,6 @@ import numpy as np
 import torch
 from PIL import Image
 import logging
-import wget
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -27,7 +26,7 @@ app.add_middleware(
 # Directory configuration
 UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "outputs"
-MODEL_DIR = "/app/models"
+MODEL_DIR = "models"  # Relative path
 MODEL_PATH = os.path.join(MODEL_DIR, "dpt_large-midas.pt")
 
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -38,46 +37,22 @@ os.makedirs(MODEL_DIR, exist_ok=True)
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.info(f"Using device: {DEVICE}")
 
-# Model URL (from Hugging Face)
-MODEL_URL = "https://huggingface.co/Rizwandatapro/midas-depth-model/resolve/main/dpt_large-midas-2f21e586.pt"
-
 # Global variables for lazy loading
 model = None
 midas_transforms = None
 
-def download_midas_model():
-    """Downloads the MiDaS model if not found."""
-    if not os.path.exists(MODEL_PATH):
-        logger.info(f"Downloading MiDaS model from {MODEL_URL}...")
-        try:
-            wget.download(MODEL_URL, MODEL_PATH)
-            logger.info("✅ MiDaS model downloaded successfully.")
-        except Exception as e:
-            logger.error(f"Model download failed: {str(e)}", exc_info=True)
-            raise RuntimeError("Failed to download MiDaS model.")
-
 def load_midas_model():
     """Load MiDaS model from the models directory."""
-    try:
-        global model, midas_transforms
-        if model is None or midas_transforms is None:
-            download_midas_model()  # Ensure the model is downloaded
-
-            logger.info(f"Loading MiDaS model from {MODEL_PATH}...")
-
-            # Load MiDaS model
-            model = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
-            model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-            model.to(DEVICE).eval()
-
-            logger.info("Loading MiDaS transforms...")
-            midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms").dpt_transform
-
-            logger.info("✅ MiDaS model and transforms loaded successfully.")
-        return model, midas_transforms
-    except Exception as e:
-        logger.error(f"Failed to load MiDaS model: {str(e)}", exc_info=True)
-        raise RuntimeError("MiDaS model loading failed.")
+    global model, midas_transforms
+    if model is None or midas_transforms is None:
+        logger.info(f"Loading MiDaS model from {MODEL_PATH}...")
+        model = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
+        model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+        model.to(DEVICE).eval()
+        logger.info("Loading MiDaS transforms...")
+        midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms").dpt_transform
+        logger.info("✅ MiDaS model and transforms loaded successfully.")
+    return model, midas_transforms
 
 @app.post("/generate-depth-map")
 async def generate_depth_map(file: UploadFile = File(...)):
@@ -127,6 +102,9 @@ async def generate_depth_map(file: UploadFile = File(...)):
         # Verify depth map creation
         if not os.path.exists(depth_path):
             raise FileNotFoundError(f"Depth map not created at {depth_path}")
+
+        # Clean up uploaded file
+        os.remove(upload_path)
 
         return FileResponse(depth_path, media_type="image/png", filename=depth_filename)
 
