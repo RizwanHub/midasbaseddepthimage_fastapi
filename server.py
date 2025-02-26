@@ -55,8 +55,8 @@ def load_midas_model():
             # Load the model
             logger.info("Loading MiDaS model...")
             start_time = time.time()
-            model = torch.load(MODEL_PATH, map_location=DEVICE)  # Use torch.load for PyTorch state dict
-            model.eval()
+            model = torch.load(MODEL_PATH, map_location=DEVICE)  # Load the model
+            model.eval()  # Set the model to evaluation mode
             logger.info(f"MiDaS model loaded successfully in {time.time() - start_time:.2f} seconds.")
 
             # Define the transforms manually
