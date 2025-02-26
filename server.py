@@ -42,16 +42,9 @@ model = None
 midas_transforms = None
 
 def load_midas_model():
-    """Load MiDaS model from the models directory."""
-    global model, midas_transforms
-    if model is None or midas_transforms is None:
-        logger.info(f"Loading MiDaS model from {MODEL_PATH}...")
-        model = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
-        model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
-        model.to(DEVICE).eval()
-        logger.info("Loading MiDaS transforms...")
-        midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms").dpt_transform
-        logger.info("✅ MiDaS model and transforms loaded successfully.")
+    model_path = "models/dpt_large-midas.pt"
+    model = torch.hub.load("intel-isl/MiDaS", "DPT_Large", source="local", model_path=model_path)
+    midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms")
     return model, midas_transforms
 
 @app.post("/generate-depth-map")
