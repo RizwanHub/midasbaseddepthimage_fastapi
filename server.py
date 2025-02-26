@@ -46,11 +46,18 @@ def load_midas_model():
     global model, midas_transforms
     if model is None or midas_transforms is None:
         logger.info(f"Loading MiDaS model from {MODEL_PATH}...")
-        model = torch.hub.load("intel-isl/MiDaS", "DPT_Large")
+        
+        # Load the model architecture locally
+        repo_dir = torch.hub.get_dir()  # Get the torch hub cache directory
+        model = torch.hub.load(repo_dir, "DPT_Large", source="local")
+        
+        # Load the model weights from the local file
         model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
         model.to(DEVICE).eval()
+        
         logger.info("Loading MiDaS transforms...")
-        midas_transforms = torch.hub.load("intel-isl/MiDaS", "transforms").dpt_transform
+        midas_transforms = torch.hub.load(repo_dir, "transforms", source="local").dpt_transform
+        
         logger.info("✅ MiDaS model and transforms loaded successfully.")
     return model, midas_transforms
 
