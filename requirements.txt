@@ -1,8 +1,8 @@
 fastapi==0.68.0
 uvicorn==0.15.0
 python-multipart==0.0.5
-torch==1.7.1+cpu
-torchvision==0.8.2+cpu
+torch==2.1.0+cpu  # Updated to a newer version
+torchvision==0.16.0+cpu  # Updated to match PyTorch version
 numpy==1.21.0
 opencv-python-headless==4.5.3.56
 Pillow==8.3.1
