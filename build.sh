@@ -1,27 +1,37 @@
 #!/bin/bash
 
-# Install Python dependencies
-echo "Installing dependencies..."
+# Debugging: Print current directory and contents
+echo "=== Current directory ==="
+pwd
+ls -al
+
+# Install dependencies
+echo "=== Installing dependencies ==="
 pip install -r requirements.txt
 
 # Create models directory
-echo "Creating models directory..."
+echo "=== Creating models directory ==="
 mkdir -p models
 
-# Download the MiDaS model weights
-echo "Downloading MiDaS model..."
+# Download model weights
+echo "=== Downloading MiDaS model weights ==="
 wget -O models/midas_v21_small_256.pt https://huggingface.co/Rizwandatapro/midas_v21_small_256/resolve/main/midas_v21_small_256.pt
 
-# Clone the MiDaS repository
-echo "Cloning MiDaS repository..."
+# Clone and verify MiDaS repository
+echo "=== Cloning MiDaS repository ==="
 git clone https://github.com/intel-isl/MiDaS.git midas_repo
 
-# Move the midas folder to the project directory
-echo "Moving MiDaS files..."
+echo "=== Verifying MiDaS folder structure ==="
+ls -al midas_repo  # Debug: List repo contents
+
+echo "=== Moving midas folder ==="
 mv midas_repo/midas /opt/render/project/src/midas
 
-# Clean up the repository
-echo "Cleaning up..."
+echo "=== Verifying midas folder contents ==="
+ls -al /opt/render/project/src/midas  # Debug: List midas folder contents
+
+# Cleanup
+echo "=== Cleaning up ==="
 rm -rf midas_repo
 
 echo "✅ Build completed successfully!"
