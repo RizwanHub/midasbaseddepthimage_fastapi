@@ -50,18 +50,38 @@ def load_midas_model():
     global model, midas_transforms
     if model is None:
         try:
-            logger.info("Loading MiDaS model...")
-            start_time = time.time()
+            logger.info("=== Starting MiDaS model loading ===")
+            
+            # Debug: Verify midas folder existence
+            midas_path = os.path.join(os.getcwd(), "midas")
+            logger.info(f"Checking midas folder at: {midas_path}")
+            logger.info(f"MIDAS FOLDER CONTENTS: {os.listdir(midas_path)}")
+            
+            # Debug: Verify midas_net.py existence
+            midas_net_path = os.path.join(midas_path, "midas_net.py")
+            logger.info(f"Checking midas_net.py at: {midas_net_path}")
+            if not os.path.exists(midas_net_path):
+                raise FileNotFoundError(f"midas_net.py not found at {midas_net_path}")
 
-            # Load the MiDaS small model architecture
+            # Debug: Verify class existence
+            logger.info("Attempting to import MidasNet_small...")
             from midas.midas_net import MidasNet_small
-            model = MidasNet_small()
+            logger.info("Successfully imported MidasNet_small!")
 
-            # Load pre-trained weights
+            # Load model
+            logger.info("Initializing model...")
+            model = MidasNet_small()
+            
+            # Debug: Verify model weights
+            logger.info(f"Loading weights from: {MODEL_PATH}")
+            if not os.path.exists(MODEL_PATH):
+                raise FileNotFoundError(f"Model weights not found at {MODEL_PATH}")
+                
             model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
             model.to(DEVICE).eval()
 
             # Load transforms
+            logger.info("Loading transforms...")
             from midas.transforms import Resize, NormalizeImage, PrepareForNet
             midas_transforms = torch.nn.Sequential(
                 Resize(384, 384),
@@ -69,10 +89,17 @@ def load_midas_model():
                 PrepareForNet()
             )
 
-            logger.info(f"Model loaded in {time.time() - start_time:.2f} seconds")
+            logger.info("✅ Model loaded successfully")
+            
         except Exception as e:
-            logger.error(f"Failed to load MiDaS model: {str(e)}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"Failed to load MiDaS model: {str(e)}")
+            logger.error("=== CRITICAL ERROR DURING MODEL LOADING ===")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Error details: {str(e)}")
+            logger.error("Traceback:", exc_info=True)
+            raise HTTPException(
+                status_code=500,
+                detail=f"Model loading failed: {str(e)} (Full logs in Render dashboard)"
+            )
 
     return model, midas_transforms
 @app.post("/generate-depth-map")
