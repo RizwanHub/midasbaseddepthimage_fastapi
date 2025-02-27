@@ -3,6 +3,6 @@ uvicorn==0.15.0
 python-multipart==0.0.5
 torch==2.1.0 ; sys_platform != 'darwin'
 torchvision==0.16.0 ; sys_platform != 'darwin'
-numpy>=1.23.5  # Use a newer NumPy version
-opencv-python-headless>=4.9.0.80  # Updated OpenCV version
+numpy<2  # Downgrade NumPy to a version below 2
+opencv-python-headless>=4.5.3.56
 Pillow>=8.3.1
