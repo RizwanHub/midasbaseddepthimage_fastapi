@@ -94,7 +94,7 @@ async def generate_depth_map(file: UploadFile = File(...)):
         img_np = np.array(img)
 
         # Apply transforms
-        input_tensor = transforms(torch.from_numpy(img_np).unsqueeze(0).to(DEVICE)
+        input_tensor = transforms(torch.from_numpy(img_np).unsqueeze(0)).to(DEVICE)
 
         # Generate depth prediction
         logger.info("Generating depth map...")
