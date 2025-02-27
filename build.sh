@@ -2,11 +2,8 @@
 
 # Install Python dependencies
 echo "Installing dependencies..."
+pip install numpy>=1.23.5  # Install numpy first to resolve OpenCV conflicts
 pip install -r requirements.txt
-
-# Install PyTorch CPU-only version
-echo "Installing PyTorch..."
-pip install torch==2.1.0 torchvision==0.16.0 --index-url https://download.pytorch.org/whl/cpu
 
 # Create models directory
 echo "Creating models directory..."
