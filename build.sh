@@ -2,7 +2,6 @@
 
 # Install Python dependencies
 echo "Installing dependencies..."
-pip install numpy>=1.23.5  # Install numpy first to resolve OpenCV conflicts
 pip install -r requirements.txt
 
 # Create models directory
