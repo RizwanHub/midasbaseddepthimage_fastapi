@@ -52,41 +52,31 @@ def load_midas_model():
         try:
             logger.info("=== Starting MiDaS model loading ===")
             
-            # Debug: Verify midas folder existence
-            midas_path = os.path.join(os.getcwd(), "midas")
-            logger.info(f"Checking midas folder at: {midas_path}")
-            logger.info(f"MIDAS FOLDER CONTENTS: {os.listdir(midas_path)}")
+            # Import correct class for v2.1 small model
+            from midas.dpt_depth import DPTDepthModel
             
-            # Debug: Verify midas_net.py existence
-            midas_net_path = os.path.join(midas_path, "midas_net.py")
-            logger.info(f"Checking midas_net.py at: {midas_net_path}")
-            if not os.path.exists(midas_net_path):
-                raise FileNotFoundError(f"midas_net.py not found at {midas_net_path}")
-
-            # Debug: Verify class existence
-            logger.info("Attempting to import MidasNet_small...")
-            from midas.midas_net import MidasNet_small
-            logger.info("Successfully imported MidasNet_small!")
-
-            # Load model
-            logger.info("Initializing model...")
-            model = MidasNet_small()
-            
-            # Debug: Verify model weights
-            logger.info(f"Loading weights from: {MODEL_PATH}")
-            if not os.path.exists(MODEL_PATH):
-                raise FileNotFoundError(f"Model weights not found at {MODEL_PATH}")
-                
-            model.load_state_dict(torch.load(MODEL_PATH, map_location=DEVICE))
+            # Initialize model with correct architecture
+            model = DPTDepthModel(
+                path=MODEL_PATH,
+                backbone="vitb_rn50_384",  # Architecture for small model
+                non_negative=True,
+            )
             model.to(DEVICE).eval()
 
-            # Load transforms
-            logger.info("Loading transforms...")
+            # Use transforms specific to DPT models
             from midas.transforms import Resize, NormalizeImage, PrepareForNet
             midas_transforms = torch.nn.Sequential(
-                Resize(384, 384),
-                NormalizeImage(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                PrepareForNet()
+                Resize(
+                    384,  # Matches "vitb_rn50_384" backbone
+                    384,
+                    resize_target=None,
+                    keep_aspect_ratio=True,
+                    ensure_multiple_of=32,
+                    resize_method="minimal",
+                    image_interpolation_method=cv2.INTER_CUBIC,
+                ),
+                NormalizeImage(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),
+                PrepareForNet(),
             )
 
             logger.info("✅ Model loaded successfully")
@@ -98,9 +88,8 @@ def load_midas_model():
             logger.error("Traceback:", exc_info=True)
             raise HTTPException(
                 status_code=500,
-                detail=f"Model loading failed: {str(e)} (Full logs in Render dashboard)"
+                detail=f"Model loading failed: {str(e)}"
             )
-
     return model, midas_transforms
 @app.post("/generate-depth-map")
 async def generate_depth_map(file: UploadFile = File(...)):
