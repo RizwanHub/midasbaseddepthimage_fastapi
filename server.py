@@ -46,7 +46,6 @@ logger.info(f"Using device: {DEVICE}")
 model = None
 midas_transforms = None
 
-# Load MiDaS model and transforms
 def load_midas_model():
     global model, midas_transforms
     if model is None:
@@ -76,7 +75,6 @@ def load_midas_model():
             raise HTTPException(status_code=500, detail=f"Failed to load MiDaS model: {str(e)}")
 
     return model, midas_transforms
-
 @app.post("/generate-depth-map")
 async def generate_depth_map(file: UploadFile = File(...)):
     try:
